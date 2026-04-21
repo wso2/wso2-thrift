@@ -95,6 +95,10 @@ public class TCompactProtocol extends TProtocol {
   private static final byte TYPE_BITS = 0x07; // 0000 0111
   private static final int  TYPE_SHIFT_AMOUNT = 5;
 
+  // Maximum wire bytes for a varint-encoded integer: ceil(32/7)=5, ceil(64/7)=10.
+  private static final int MAX_VARINT32_BYTES = 5;
+  private static final int MAX_VARINT64_BYTES = 10;
+
   /**
    * All of the on-wire type codes.
    */
@@ -767,7 +771,7 @@ public class TCompactProtocol extends TProtocol {
   private int readVarint32() throws TException {
     int result = 0;
     int shift = 0;
-    if (trans_.getBytesRemainingInBuffer() >= 5) {
+    if (trans_.getBytesRemainingInBuffer() >= MAX_VARINT32_BYTES) {
       byte[] buf = trans_.getBuffer();
       int pos = trans_.getBufferPosition();
       int off = 0;
@@ -777,15 +781,21 @@ public class TCompactProtocol extends TProtocol {
         if ((b & 0x80) != 0x80) break;
         shift += 7;
         off++;
+        if (off >= MAX_VARINT32_BYTES) {
+          throw new TProtocolException(
+              TProtocolException.INVALID_DATA, "Variable-length int over 5 bytes.");
+        }
       }
       trans_.consumeBuffer(off+1);
     } else {
-      while (true) {
+      for (int rsize = 0; rsize < MAX_VARINT32_BYTES; rsize++) {
         byte b = readByte();
         result |= (int) (b & 0x7f) << shift;
-        if ((b & 0x80) != 0x80) break;
+        if ((b & 0x80) != 0x80) return result;
         shift += 7;
       }
+      throw new TProtocolException(
+          TProtocolException.INVALID_DATA, "Variable-length int over 5 bytes.");
     }
     return result;
   }
@@ -797,7 +807,7 @@ public class TCompactProtocol extends TProtocol {
   private long readVarint64() throws TException {
     int shift = 0;
     long result = 0;
-    if (trans_.getBytesRemainingInBuffer() >= 10) {
+    if (trans_.getBytesRemainingInBuffer() >= MAX_VARINT64_BYTES) {
       byte[] buf = trans_.getBuffer();
       int pos = trans_.getBufferPosition();
       int off = 0;
@@ -807,15 +817,21 @@ public class TCompactProtocol extends TProtocol {
         if ((b & 0x80) != 0x80) break;
         shift += 7;
         off++;
+        if (off >= MAX_VARINT64_BYTES) {
+          throw new TProtocolException(
+              TProtocolException.INVALID_DATA, "Variable-length int over 10 bytes.");
+        }
       }
       trans_.consumeBuffer(off+1);
     } else {
-      while (true) {
+      for (int rsize = 0; rsize < MAX_VARINT64_BYTES; rsize++) {
         byte b = readByte();
         result |= (long) (b & 0x7f) << shift;
-        if ((b & 0x80) != 0x80) break;
+        if ((b & 0x80) != 0x80) return result;
         shift +=7;
       }
+      throw new TProtocolException(
+          TProtocolException.INVALID_DATA, "Variable-length int over 10 bytes.");
     }
     return result;
   }
