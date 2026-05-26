@@ -71,3 +71,6 @@ apply from: 'gradle/cloverCoverage.gradle'
 apply from: 'gradle/functionalTests.gradle'
 apply from: 'gradle/publishing.gradle'
 apply from: 'gradle/codeQualityChecks.gradle'
+
+build.finalizedBy install
+uploadArchives.dependsOn build

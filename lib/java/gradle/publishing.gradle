@@ -101,7 +101,6 @@ install {
 }
 
 uploadArchives {
-    dependsOn test // make sure we run unit tests when publishing
     repositories.mavenDeployer {
         // signPom will silently do nothing when no signing information is provided
         beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
