@@ -105,10 +105,11 @@ uploadArchives {
     repositories.mavenDeployer {
         // signPom will silently do nothing when no signing information is provided
         beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
-        repository(url: project.mavenRepositoryUrl) {
-            if (project.hasProperty('mavenUser') && project.hasProperty('mavenPassword')) {
-                authentication(userName: mavenUser, password: mavenPassword)
-            }
+        repository(url: System.getenv("NEXUS_REPO_URL") ?: project.mavenRepositoryUrl) {
+            authentication(
+                    userName: project.hasProperty('mavenUser') ? mavenUser : System.getenv("NEXUS_USERNAME"),
+                    password: project.hasProperty('mavenPassword') ? mavenPassword : System.getenv("NEXUS_PASSWORD")
+            )
         }
         configurePom(pom)
     }
