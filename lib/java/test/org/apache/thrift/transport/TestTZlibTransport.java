@@ -29,6 +29,8 @@ import java.util.zip.DataFormatException;
 import java.util.zip.DeflaterOutputStream;
 import java.util.zip.InflaterInputStream;
 
+import org.apache.thrift.TConfiguration;
+
 import junit.framework.TestCase;
 
 public class TestTZlibTransport extends TestCase {
@@ -135,6 +137,31 @@ public class TestTZlibTransport extends TestCase {
     }
 
     assertTrue(Arrays.equals(byteSequence(0,245), buf));
+  }
+
+  // Ported from upstream 1dad55d6. 0.16.0 has no MESSAGE_SIZE_LIMIT type;
+  // TEndpointTransport reports the exhausted budget as END_OF_FILE ("MaxMessageSize reached").
+  public void testMessageSizeLimit() throws Exception {
+    byte[] data = new byte[4096];
+    Arrays.fill(data, (byte) 'a');
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    TZlibTransport writer = new TZlibTransport(new TIOStreamTransport(baos));
+    writer.write(data);
+    writer.flush();
+    writer.close();
+
+    TConfiguration cfg = new TConfiguration();
+    cfg.setMaxMessageSize(1024);
+    TZlibTransport reader = new TZlibTransport(
+        new TIOStreamTransport(cfg, new ByteArrayInputStream(baos.toByteArray())));
+
+    try {
+      reader.read(new byte[4096], 0, 4096);
+      fail("expected TTransportException once decompressed bytes exceed maxMessageSize");
+    } catch (TTransportException ex) {
+      assertEquals(TTransportException.END_OF_FILE, ex.getType());
+    }
   }
 
 }

@@ -40,6 +40,7 @@ public class AutoExpandingBufferReadTransport extends TEndpointTransport {
     inTrans.readAll(buf.array(), 0, length);
     pos = 0;
     limit = length;
+    resetConsumedMessageSize(-1);
   }
 
   @Override
@@ -69,6 +70,11 @@ public class AutoExpandingBufferReadTransport extends TEndpointTransport {
   @Override
   public final void consumeBuffer(int len) {
     pos += len;
+    if (remainingMessageSize >= len) {
+      remainingMessageSize -= len;
+    } else {
+      remainingMessageSize = 0;
+    }
   }
 
   @Override
